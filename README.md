@@ -14,6 +14,8 @@ npm run dev
 
 Open http://localhost:5173
 
+On Vercel, set the project Root Directory to `client`. The same deployment serves the pages and the `/api` routes. Without `MONGODB_URI`, the live site uses the sample class in memory so the demo accounts can sign in. Add a MongoDB Atlas connection string in the Vercel environment variables if created exams should be kept.
+
 `npm install` installs the root tools, the React app, and the API. `npm run dev` starts both:
 
 - Web app: http://localhost:5173

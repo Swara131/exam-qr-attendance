@@ -94,7 +94,9 @@ export default function Dashboard() {
         <p className="text-xs text-slate-400">
           {stats.storage === 'mongodb'
             ? 'Records are stored in MongoDB.'
-            : 'MongoDB is not running, so this demo is saved in a local file. Set MONGODB_URI when you want to use MongoDB.'}
+            : stats.storage === 'memory'
+              ? 'This online demo keeps the sample class in memory so sign-in works. Add MONGODB_URI in Vercel if new exams should be saved permanently.'
+              : 'MongoDB is not running, so this demo is saved in a local file. Set MONGODB_URI when you want to use MongoDB.'}
         </p>
       )}
     </div>

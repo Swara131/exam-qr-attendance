@@ -1,9 +1,9 @@
-import 'dotenv/config';
+import './load-env.js';
 import express from 'express';
 import cors from 'cors';
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, pathToFileURL } from 'url';
 import { httpError } from './errors.js';
 import { readSession } from './security.js';
 import { initStore, storageMode } from './store.js';
@@ -132,12 +132,29 @@ app.use((error, req, res, next) => {
   res.status(status).json({ error: message });
 });
 
-await initStore();
+const ready = initStore();
+const isDirectRun = process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url;
 
-app.listen(port, () => {
-  const storageLabel = storageMode() === 'mongodb' ? 'MongoDB' : 'local file (server/data/db.json)';
-  console.log(`ExamQR server is running at http://localhost:${port}`);
-  console.log(`Storage: ${storageLabel}`);
-  console.log('Teacher login: TCH001 / teacher123');
-  console.log('Student login: STU003 / student123');
-});
+export { ready };
+export default app;
+
+if (!process.env.VERCEL && isDirectRun) {
+  ready
+    .then(() => {
+      app.listen(port, () => {
+        const labels = {
+          mongodb: 'MongoDB',
+          memory: 'memory',
+          file: 'local file (server/data/db.json)',
+        };
+        console.log(`ExamQR server is running at http://localhost:${port}`);
+        console.log(`Storage: ${labels[storageMode()] || storageMode()}`);
+        console.log('Teacher login: TCH001 / teacher123');
+        console.log('Student login: STU003 / student123');
+      });
+    })
+    .catch((error) => {
+      console.error(error);
+      process.exit(1);
+    });
+}

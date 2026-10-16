@@ -1,4 +1,9 @@
-import { hashPassword, newQrToken } from './security.js';
+import crypto from 'crypto';
+import { hashPassword } from './security.js';
+
+function demoToken(id) {
+  return crypto.createHash('sha256').update(`examqr-demo-${id}`).digest('hex').slice(0, 48);
+}
 
 function pad(value) {
   return String(value).padStart(2, '0');
@@ -67,7 +72,7 @@ export function buildSample() {
         date: schedule['exam-ds-midterm'].date,
         time: schedule['exam-ds-midterm'].time,
         classroom: 'Room 204',
-        qrToken: newQrToken(),
+        qrToken: demoToken('exam-ds-midterm'),
         isSample: true,
         createdBy: 'TCH001',
         createdAt,

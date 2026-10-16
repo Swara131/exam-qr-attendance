@@ -25,7 +25,7 @@ export async function api(path, { method = 'GET', body } = {}) {
   }
 
   if (!response.ok) {
-    throw new Error(data.error || 'Something went wrong. Please try again.');
+    throw new Error(data.error || 'The attendance server did not respond. Please try again.');
   }
 
   return data;

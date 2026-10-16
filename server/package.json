@@ -4,8 +4,8 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "node --watch src/index.js",
-    "start": "node src/index.js"
+    "dev": "npm run dev:api --prefix ../client",
+    "start": "npm run start:api --prefix ../client"
   },
   "dependencies": {
     "cors": "^2.8.5",

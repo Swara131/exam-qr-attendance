@@ -6,9 +6,9 @@
   "scripts": {
     "postinstall": "npm install --prefix server && npm install --prefix client",
     "dev": "concurrently -n server,client -c blue,green \"npm:dev:server\" \"npm:dev:client\"",
-    "dev:server": "npm run dev --prefix server",
+    "dev:server": "npm run dev:api --prefix client",
     "dev:client": "npm run dev --prefix client",
-    "start": "npm run start --prefix server",
+    "start": "npm run start:api --prefix client",
     "build": "npm run build --prefix client"
   },
   "devDependencies": {

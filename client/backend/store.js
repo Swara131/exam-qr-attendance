@@ -5,7 +5,7 @@ import mongoose from 'mongoose';
 import { httpError } from './errors.js';
 import { buildSample, sampleSchedule } from './sample.js';
 
-const dataDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../data');
+const dataDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../server/data');
 const dbPath = path.join(dataDir, 'db.json');
 
 const teacherSchema = new mongoose.Schema(
@@ -82,9 +82,17 @@ function withoutEmptyToken(exam) {
 }
 
 class FileStore {
-  constructor(data) {
+  constructor(data, options = {}) {
     this.data = data;
     this.queue = Promise.resolve();
+    this.persist = options.persist !== false;
+  }
+
+  static memory() {
+    return new FileStore(
+      { teachers: [], students: [], exams: [], attendance: [] },
+      { persist: false },
+    );
   }
 
   static async open() {
@@ -104,6 +112,7 @@ class FileStore {
   }
 
   async save() {
+    if (!this.persist) return;
     const snapshot = JSON.stringify(this.data, null, 2);
     this.queue = this.queue
       .then(() => fs.writeFile(dbPath, snapshot, 'utf8'))
@@ -284,9 +293,21 @@ export function getStore() {
   return backend;
 }
 
+async function useLocalStore() {
+  if (process.env.VERCEL) {
+    backend = FileStore.memory();
+    mode = 'memory';
+    console.log('Vercel is using demo data in memory.');
+    return;
+  }
+  backend = await FileStore.open();
+  mode = 'file';
+  console.log('Saving demo data in server/data/db.json.');
+}
+
 export async function initStore() {
   const uri = process.env.MONGODB_URI;
-  if (uri) {
+  if (uri && !process.env.VERCEL) {
     try {
       await mongoose.connect(uri, {
         serverSelectionTimeoutMS: 2000,
@@ -298,14 +319,24 @@ export async function initStore() {
       console.log('Connected to MongoDB.');
     } catch (error) {
       console.warn(`MongoDB is not available (${error.message}).`);
-      console.warn('Saving demo data in server/data/db.json instead.');
-      backend = await FileStore.open();
-      mode = 'file';
+      await useLocalStore();
+    }
+  } else if (uri && process.env.VERCEL) {
+    try {
+      await mongoose.connect(uri, {
+        serverSelectionTimeoutMS: 8000,
+        connectTimeoutMS: 8000,
+        family: 4,
+      });
+      backend = new MongoStore();
+      mode = 'mongodb';
+      console.log('Connected to MongoDB.');
+    } catch (error) {
+      console.warn(`MongoDB is not available (${error.message}).`);
+      await useLocalStore();
     }
   } else {
-    console.log('MONGODB_URI is not set. Saving demo data in server/data/db.json.');
-    backend = await FileStore.open();
-    mode = 'file';
+    await useLocalStore();
   }
 
   const studentCount = await backend.countStudents();
