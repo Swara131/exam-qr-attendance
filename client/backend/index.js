@@ -103,7 +103,12 @@ app.post('/api/attendance/mark', requireAuth, requireRole('student'), asyncRoute
   }
 
   const qrPayload = body.demo ? await payloadForExam(body.examId) : body.qrPayload;
-  const attendance = await markPresent({ studentId: req.user.studentId, qrPayload });
+  const attendance = await markPresent({
+    studentId: req.user.studentId,
+    qrPayload,
+    examId: typeof body.examId === 'string' ? body.examId : '',
+    live: Boolean(body.live),
+  });
   res.status(201).json({
     message: `Attendance marked for ${attendance.examName}.`,
     attendance,

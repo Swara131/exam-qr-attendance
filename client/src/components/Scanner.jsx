@@ -7,13 +7,14 @@ export default function Scanner({ onScan, disabled }) {
   const [error, setError] = useState('');
   const scannerRef = useRef(null);
   const onScanRef = useRef(onScan);
-  const lockRef = useRef(false);
+  const lastRef = useRef({ text: '', at: 0 });
 
   useEffect(() => {
     onScanRef.current = onScan;
   }, [onScan]);
 
   useEffect(() => {
+    start();
     return () => {
       stopScanner();
     };
@@ -37,7 +38,6 @@ export default function Scanner({ onScan, disabled }) {
 
   async function start() {
     setError('');
-    lockRef.current = false;
     await stopScanner();
 
     const { Html5Qrcode } = await import('html5-qrcode');
@@ -51,12 +51,12 @@ export default function Scanner({ onScan, disabled }) {
           camera,
           { fps: 10, qrbox: { width: 220, height: 220 } },
           (text) => {
-            if (lockRef.current) return;
-            lockRef.current = true;
-            stopScanner().finally(() => {
-              setRunning(false);
-              onScanRef.current(text);
-            });
+            const value = String(text || '').trim();
+            if (!value) return;
+            const now = Date.now();
+            if (lastRef.current.text === value && now - lastRef.current.at < 8000) return;
+            lastRef.current = { text: value, at: now };
+            onScanRef.current(value);
           },
           () => {},
         );
@@ -88,7 +88,7 @@ export default function Scanner({ onScan, disabled }) {
         {!running && (
           <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center px-6 text-center text-sm text-slate-500">
             <Camera size={22} />
-            <p className="mt-2">The camera preview appears here.</p>
+            <p className="mt-2">Point the camera at any QR code. Attendance is marked as soon as it is read.</p>
           </div>
         )}
       </div>

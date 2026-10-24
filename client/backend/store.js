@@ -1,5 +1,6 @@
 import fs from 'fs/promises';
 import path from 'path';
+import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 import mongoose from 'mongoose';
 import { httpError } from './errors.js';
@@ -134,6 +135,20 @@ class FileStore {
     return this.data.students.find((student) => student.studentId === studentId) || null;
   }
 
+  async ensureStudent({ studentId, name }) {
+    const existing = await this.findStudent(studentId);
+    if (existing) return existing;
+    const student = {
+      id: crypto.randomUUID(),
+      studentId,
+      name: name || `Student ${studentId}`,
+      passwordHash: 'open',
+    };
+    this.data.students.push(student);
+    await this.save();
+    return { ...student };
+  }
+
   async listExams() {
     return this.data.exams.map((exam) => ({ ...exam }));
   }
@@ -212,6 +227,19 @@ class MongoStore {
 
   async findStudent(studentId) {
     return plain(await Student.findOne({ studentId }).lean());
+  }
+
+  async ensureStudent({ studentId, name }) {
+    const existing = await this.findStudent(studentId);
+    if (existing) return existing;
+    const student = {
+      id: crypto.randomUUID(),
+      studentId,
+      name: name || `Student ${studentId}`,
+      passwordHash: 'open',
+    };
+    await Student.create(student);
+    return student;
   }
 
   async listExams() {

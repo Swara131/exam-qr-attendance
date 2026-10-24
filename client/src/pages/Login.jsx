@@ -14,7 +14,7 @@ const accounts = {
     identifier: 'STU003',
     password: 'student123',
     label: 'Student ID',
-    hint: 'Demo student: STU003 · password student123. STU001 is already marked for the midterm.',
+    hint: 'Any student ID and any password can sign in.',
   },
 };
 
@@ -43,7 +43,12 @@ export default function Login() {
   async function onSubmit(event) {
     event.preventDefault();
     setError('');
-    if (!identifier.trim() || !password) {
+    if (role === 'student') {
+      if (!identifier.trim()) {
+        setError('Enter a student ID. Any password is accepted.');
+        return;
+      }
+    } else if (!identifier.trim() || !password) {
       setError('Enter your ID and password.');
       return;
     }

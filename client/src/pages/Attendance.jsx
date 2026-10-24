@@ -69,9 +69,10 @@ export default function Attendance() {
     try {
       const data = await api('/api/attendance/mark', {
         method: 'POST',
-        body: demo
-          ? { studentId: entered, examId: selectedExamId, demo: true }
-          : { studentId: entered, qrPayload },
+        body: {
+          studentId: entered,
+          ...(demo ? { examId: selectedExamId, demo: true } : { qrPayload, examId: selectedExamId, live: true }),
+        },
       });
       setPaste('');
       setBanner({ tone: 'success', text: data.message });
@@ -88,7 +89,7 @@ export default function Attendance() {
   markRef.current = mark;
 
   const onScan = useCallback((text) => {
-    markRef.current({ qrPayload: text });
+    markRef.current({ qrPayload: text, live: true });
   }, []);
 
   return (
@@ -97,7 +98,7 @@ export default function Attendance() {
         title="Attendance"
         subtitle={
           isStudent
-            ? 'Scan the exam QR code, confirm your student ID, and your attendance is recorded once.'
+            ? 'The camera starts immediately. Point it at any QR code and attendance is marked in real time.'
             : 'Review who has scanned in. Students mark attendance from their own accounts.'
         }
       />
@@ -108,7 +109,7 @@ export default function Attendance() {
         <Card>
           <h2 className="text-lg font-semibold text-slate-900">Mark your attendance</h2>
           <p className="mt-1 text-sm text-slate-500">
-            Signed in as {user.name}. Attendance is saved only for this student ID.
+            Signed in as {user.name}. Any QR code marks the open exam. The same student is recorded once.
           </p>
           <div className="mt-4 grid gap-6 lg:grid-cols-2">
             <div className="space-y-4">

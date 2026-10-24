@@ -53,10 +53,10 @@ export async function login(body) {
   const role = body.role;
   const identifier = String(body.identifier || '').trim().toUpperCase();
   const password = String(body.password || '');
-  if (!identifier || !password) throw httpError(400, 'Enter your ID and password.');
-
   const store = getStore();
+
   if (role === 'teacher') {
+    if (!identifier || !password) throw httpError(400, 'Enter your ID and password.');
     const teacher = await store.findTeacher(identifier);
     if (!teacher || !verifyPassword(password, teacher.passwordHash)) {
       throw httpError(401, 'Those sign-in details do not match our records.');
@@ -66,9 +66,13 @@ export async function login(body) {
   }
 
   if (role === 'student') {
-    const student = await store.findStudent(identifier);
-    if (!student || !verifyPassword(password, student.passwordHash)) {
-      throw httpError(401, 'Those sign-in details do not match our records.');
+    if (!identifier) throw httpError(400, 'Enter a student ID.');
+    let student = await store.findStudent(identifier);
+    if (!student) {
+      student = await store.ensureStudent({
+        studentId: identifier,
+        name: `Student ${identifier}`,
+      });
     }
     const user = { role: 'student', name: student.name, studentId: student.studentId };
     return { token: signSession(user), user };
@@ -163,17 +167,29 @@ export async function payloadForExam(examId) {
   return signQrToken(exam.qrToken);
 }
 
-export async function markPresent({ studentId, qrPayload }) {
-  const payload = String(qrPayload || '');
-  if (!payload.trim()) throw httpError(400, 'Scan a QR code or choose an exam for a demo scan.');
+export async function markPresent({ studentId, qrPayload, examId, live }) {
+  const payload = String(qrPayload || '').trim();
+  if (!payload) throw httpError(400, 'Scan a QR code or choose an exam for a demo scan.');
 
-  const token = readQrToken(payload);
-  if (!token) {
-    throw httpError(400, 'This QR code could not be verified. Use the code displayed by your teacher.');
+  let student = await getStore().findStudent(studentId);
+  if (!student) {
+    student = await getStore().ensureStudent({
+      studentId,
+      name: `Student ${studentId}`,
+    });
   }
 
-  const exam = await getStore().findExamByToken(token);
-  if (!exam) throw httpError(404, 'No exam matches this QR code.');
+  const token = readQrToken(payload);
+  let exam = token ? await getStore().findExamByToken(token) : null;
+  if (!exam && live) {
+    const exams = await getStore().listExams();
+    const selected = examId ? exams.find((item) => item.id === examId) : null;
+    const openExam = exams.find((item) => windowStatus(item) === 'open');
+    exam = (selected && windowStatus(selected) === 'open' ? selected : null) || openExam || selected || null;
+  }
+  if (!exam) {
+    throw httpError(400, 'Point the camera at a QR code while an exam is open.');
+  }
 
   const status = windowStatus(exam);
   const { opens, closes } = attendanceWindow(exam);
@@ -183,9 +199,6 @@ export async function markPresent({ studentId, qrPayload }) {
   if (status === 'closed') {
     throw httpError(400, `The attendance window has closed. It was open from ${formatRange(opens, closes)}.`);
   }
-
-  const student = await getStore().findStudent(studentId);
-  if (!student) throw httpError(404, 'That student ID was not found.');
 
   const alreadyMarked = await getStore().findAttendance(student.studentId, exam.id);
   if (alreadyMarked) {
